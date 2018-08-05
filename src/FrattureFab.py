@@ -2,7 +2,32 @@ import cv2
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import collections
 from PIL import Image
+
+
+def find_maximums(points, thresh):
+    over = False
+    local_points = {}
+    local_max = 0  # our values can't go lower than 0
+    cur_idx = 0
+
+    for (k, v) in points.iteritems():
+        if over:
+            if v > local_max:
+                local_max = v
+                cur_idx = k
+            elif v <= thresh:
+                local_points[cur_idx] = local_max
+                over = False
+                local_max = 0
+        else:
+            if v > thresh:
+                local_max = v
+                cur_idx = k
+                over = True
+    return local_points
+
 
 if __name__ == '__main__':
     leo_broken = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Broken/bone3cut.jpg'
@@ -33,20 +58,22 @@ if __name__ == '__main__':
     # find edges first is for broken image, second for unbroken
     edges = cv2.Canny(blur, 25, 75, apertureSize=3)  # 25 is minvalue, 75 maxvalue, 3 the size of windows to convolute
 
-    # edges = cv2.Canny(blur, 15, 45, apertureSize = 3) #25 is minvalue, 75 maxvalue, 3 the size of windows to convolute
+    # edges = cv2.Canny(blur, 15, 45, apertureSize=3) #25 is minvalue, 45 maxvalue, 3 the size of windows to convolute
 
     # erode and dilate with kernel window
-    kernel = np.ones((7, 7), np.uint8)
-    boneEdges = cv2.erode(edges, kernel, iterations=2)
-    boneEdges = cv2.dilate(edges, kernel, iterations=2)
+    kernel_erode = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
+    kernel_dilate = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+
+    boneEdges = cv2.erode(edges, kernel_erode, iterations=2)
+    boneEdges = cv2.dilate(boneEdges, kernel_dilate, iterations=2)
 
     # plot the result
-    plt.imshow(boneEdges)
-    plt.show()
+    # plt.imshow(boneEdges)
+    # plt.show()
 
     # find lines with houghlines:
     # second arg is rho accuracy (that is 10 pixels in this case) and third is theta accuracy, fourth is the threshold
-    lines = cv2.HoughLines(boneEdges, 10, np.pi/45, 50)
+    lines = cv2.HoughLines(boneEdges, 10, np.pi / 45, 50)
 
     # print(lines.shape)
     # print(lines[0].shape)
@@ -75,17 +102,23 @@ if __name__ == '__main__':
 
     # creo due liste una con gli angoli e una con il num di angoli associati,
     # ma e sbagliato perche questa cosa e gia stata fatta dalla hough transform
-    list_weighted = [0] * 180
-    list_thetas = [i for i in range(180)]
+    th_occ = {}
+    threshold = 34
 
-    for i in range(maxLines):
-        for r, theta in lines[i]:
+    for line in lines:
+        for r, theta in line:
             theta_degs = int(theta * 180 / math.pi)
-            list_weighted[theta_degs] = list_weighted[theta_degs] + 1
+            if theta_degs in th_occ:
+                th_occ[theta_degs] += 1
+            else:
+                th_occ[theta_degs] = 1
 
-    plt.scatter(list_thetas, list_weighted)
-    plt.plot(list_thetas, list_weighted)
+    ordered_occ = collections.OrderedDict(sorted(th_occ.items()))
+    maximums = find_maximums(ordered_occ, threshold)
 
+    plt.scatter(maximums.keys(), maximums.values(), marker='x', color='r')
+    plt.plot(ordered_occ.keys(), ordered_occ.values())
+    plt.plot((0, 180), (threshold, threshold), linestyle='--')
     plt.xlabel("Theta")
     plt.ylabel("Weight")
     plt.show()
@@ -103,23 +136,23 @@ if __name__ == '__main__':
     # faccio una media tra le linee iniziali
     count = 0
     totangle = 0
-    for i in range(maxLines):
-        for rho, theta in lines[i]:
+    for line in lines:
+        for rho, theta in line:
             angle = (theta * 180) / math.pi
-            totangle = totangle + angle
-            count = count + 1
+            totangle += angle
+            count += 1
 
     peaks = totangle / count
 
     print("peaks is = %f\n" % peaks)
 
     # draw the first maxLines
-    for i in range(maxLines):
-        for rho, theta in lines[i]:
+    for line in lines:
+        for rho, theta in line:
             a = np.cos(theta)
             b = np.sin(theta)
-            x0 = a*rho
-            y0 = b*rho
+            x0 = a * rho
+            y0 = b * rho
 
             # height e la lunghezza della linea
             x1 = int(x0 + height * (-b))
@@ -134,7 +167,7 @@ if __name__ == '__main__':
             if angle > 90:
                 angle = angle - 180
 
-            print("Line %d\n" % i)
+            # print("Line %s\n" % line)
             print("Theta: %f\n" % angle)
             print("Rho: %f\n" % rho)
             cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 3)
