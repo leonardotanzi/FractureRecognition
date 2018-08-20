@@ -30,24 +30,31 @@ def find_maximums(points, thresh):
 
 
 if __name__ == '__main__':
-    leo_broken = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Broken/bone3cut.jpg'
-    leo_clean = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Unbroken/sana2.jpg'
-    leo_out = '/Users/leonardotanzi/Desktop/houghlines2.jpg'
+    leo = False
+    clean_img = False
 
-    fab_broken = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Broken\bone3cut.jpg"
-    fab_clean = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Unbroken\sana2.jpg"
-    fab_out = r"C:\Users\cassa\Desktop\Fabien\out.jpg"
-    # open image with open to compute sizes
-    img_h = Image.open(fab_broken)
-    # img_h = Image.open(fab_clean)
+    if leo:
+        broken = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Broken/bone3cut.jpg'
+        clean = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Unbroken/sana2.jpg'
+        out = '/Users/leonardotanzi/Desktop/houghlines2.jpg'
+    else:
+        broken = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Broken\bone3cut.jpg"
+        clean = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Unbroken\sana2.jpg"
+        out = r"C:\Users\cassa\Desktop\Fabien\out.jpg"
 
-    # compute width, height and diagonal
+    # we need to open the img twice, this is to retrieve the img dimensions
+    if clean_img:
+        img_h = Image.open(clean)
+    else:
+        img_h = Image.open(broken)
+
     width, height = img_h.size
     diagonal = math.sqrt(width ** 2 + height ** 2)
 
-    # open image with imread
-    img = cv2.imread(fab_broken)
-    # img = cv2.imread(fab_clean)
+    if clean_img:
+        img = cv2.imread(clean)
+    else:
+        img = cv2.imread(broken)
 
     # convert to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -56,9 +63,10 @@ if __name__ == '__main__':
     blur = cv2.GaussianBlur(gray, (3, 3), 0)
 
     # find edges first is for broken image, second for unbroken
-    edges = cv2.Canny(blur, 25, 75, apertureSize=3)  # 25 is minvalue, 75 maxvalue, 3 the size of windows to convolute
-
-    # edges = cv2.Canny(blur, 15, 45, apertureSize=3) #25 is minvalue, 45 maxvalue, 3 the size of windows to convolute
+    if clean_img:
+        edges = cv2.Canny(blur, 15, 45, apertureSize=3)
+    else:
+        edges = cv2.Canny(blur, 25, 75, apertureSize=3)
 
     # erode and dilate with kernel window
     kernel_erode = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
@@ -68,36 +76,23 @@ if __name__ == '__main__':
     boneEdges = cv2.dilate(boneEdges, kernel_dilate, iterations=2)
 
     # plot the result
-    # plt.imshow(boneEdges)
-    # plt.show()
+    plt.imshow(boneEdges)
+    plt.show()
 
     # find lines with houghlines:
     # second arg is rho accuracy (that is 10 pixels in this case) and third is theta accuracy, fourth is the threshold
     lines = cv2.HoughLines(boneEdges, 10, np.pi / 45, 50)
 
-    # print(lines.shape)
-    # print(lines[0].shape)
-    # print(lines[0][0].shape)
+    if __debug__:
+        print(lines.shape)        # (337, 1, 2)
+        print(lines[0].shape)     # (1, 2)
+        print(lines[0][0].shape)  # (2,)
 
-    # stampa
-    # (337, 1, 2)
-    # (1, 2)
-    # (2,)
+        print(lines)        # [[  modulo, angolo in rad ]]
+        print(lines[0])     # [[  3.30000000e+02   2.09439516e-01]]
+        print(lines[0][0])  # [  3.30000000e+02   2.09439516e-01]
 
-    # print(lines)
-    # print(lines[0])   #[[  3.30000000e+02   2.09439516e-01]]
-    # print(lines[0][0]) #[  3.30000000e+02   2.09439516e-01]
-
-    # gli ultimi due stampano la stessa cosa, in pratica e un formato nested quindi e una lista di un solo elemento
-
-    # vuol dire che ci sono 337 linee
-
-    # lines e nel formato
-    # [[  3.30000000e+02   2.09439516e-01]]
-    # [[  2.90000000e+02   1.39626339e-01]]
-    # [[  modulo, angolo in rad ]]
-
-    # set the max n of lines
+    # set the max n of lines ????
     maxLines = 3
 
     # creo due liste una con gli angoli e una con il num di angoli associati,
@@ -200,4 +195,4 @@ if __name__ == '__main__':
     else:
         print("Unbroken!\n")
 
-    cv2.imwrite(fab_out, img)
+    cv2.imwrite(out, img)
