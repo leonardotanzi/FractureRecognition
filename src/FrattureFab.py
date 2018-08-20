@@ -6,6 +6,12 @@ import collections
 from PIL import Image
 
 
+def find_coeffs((x1, y1), (x2, y2)):
+    a = float(y2 - y1) / (x2 - x1)
+    b = y1 - a*x1
+    return a, b
+
+
 def find_maximums(points, thresh):
     over = False
     local_points = {}
@@ -40,7 +46,7 @@ if __name__ == '__main__':
     else:
         broken = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Broken\bone3cut.jpg"
         clean = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Unbroken\sana2.jpg"
-        out = r"C:\Users\cassa\Desktop\Fabien\out.jpg"
+        out = r"C:\Users\cassa\Desktop\Fabien\out_img.jpg"
 
     # we need to open the img twice, this is to retrieve the img dimensions
     if clean_img:
@@ -166,6 +172,10 @@ if __name__ == '__main__':
             print("Theta: %f\n" % angle)
             print("Rho: %f\n" % rho)
             cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 3)
+
+            a, b = find_coeffs((x1, y1), (x2, y2))
+            cv2.circle(img, (int(-b / a), 0), 50, (0, 255, 255), thickness=-1)  # -1 thickness is for
+            cv2.circle(img, (int((height-b)/a), int(height)), 50, (0, 255, 0), thickness=-1)
 
             # uso il primo angolo come riferimento, qua forse andrebbe meglio prendere una media tra i vari theta
             # if i == 0:
