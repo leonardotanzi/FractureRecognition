@@ -8,7 +8,7 @@ from PIL import Image
 
 def find_coeffs((x1, y1), (x2, y2)):
     a = float(y2 - y1) / (x2 - x1)
-    b = y1 - a*x1
+    b = y1 - a * x1
     return a, b
 
 
@@ -36,7 +36,7 @@ def find_maximums(points, thresh):
 
 
 if __name__ == '__main__':
-    leo = False
+    leo = True
     clean_img = False
 
     if leo:
@@ -98,7 +98,7 @@ if __name__ == '__main__':
         print(lines[0])     # [[  3.30000000e+02   2.09439516e-01]]
         print(lines[0][0])  # [  3.30000000e+02   2.09439516e-01]
 
-    # set the max n of lines ????
+    # set the max n of lines
     maxLines = 3
 
     # creo due liste una con gli angoli e una con il num di angoli associati,
