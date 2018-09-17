@@ -4,10 +4,17 @@ import math
 import matplotlib.pyplot as plt
 import collections
 from PIL import Image
+#import kivy
 
+def find_coeffs(x1, y1, x2, y2):
 
-def find_coeffs((x1, y1), (x2, y2)):
-    a = float(y2 - y1) / (x2 - x1)
+    # Just to avoid division by zero error
+    if x2 - x1 == 0:
+        den = 0.1
+    else:
+        den = x2 - x1
+
+    a = float(y2 - y1) / (den)
     b = y1 - a * x1
     return a, b
 
@@ -18,7 +25,7 @@ def find_maximums(points, thresh):
     local_max = 0  # our values can't go lower than 0
     cur_idx = 0
 
-    for (k, v) in points.iteritems():
+    for (k, v) in points.items():
         if over:
             if v > local_max:
                 local_max = v
@@ -37,18 +44,18 @@ def find_maximums(points, thresh):
 
 if __name__ == '__main__':
     leo = True
-    clean_img = False
+    clean_img = True
 
     if leo:
-        broken = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Broken/bone3cut.jpg'
-        clean = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Unbroken/sana2.jpg'
+        broken = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Broken/ok4.jpg'
+        clean = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Unbroken/ok4.jpg'
         out = '/Users/leonardotanzi/Desktop/houghlines2.jpg'
     else:
         broken = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Broken\bone3cut.jpg"
         clean = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Unbroken\sana2.jpg"
         out = r"C:\Users\cassa\Desktop\Fabien\out_img.jpg"
 
-    # we need to open the img twice, this is to retrieve the img dimensions
+    # We need to open the img twice, this is to retrieve the img dimensions
     if clean_img:
         img_h = Image.open(clean)
     else:
@@ -62,33 +69,36 @@ if __name__ == '__main__':
     else:
         img = cv2.imread(broken)
 
-    # convert to grayscale
+    # Convert to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # blur to remove noise
+    # Blur to remove noise
     blur = cv2.GaussianBlur(gray, (3, 3), 0)
 
-    # find edges first is for broken image, second for unbroken
+    # Find edges first is for clean image, second for unbroken, maxLines parameter must be adapted
     if clean_img:
-        edges = cv2.Canny(blur, 15, 45, apertureSize=3)
+        edges = cv2.Canny(blur, 24, 72, apertureSize = 3)
+        maxLines = 3
     else:
-        edges = cv2.Canny(blur, 25, 75, apertureSize=3)
+        edges = cv2.Canny(blur, 24, 72, apertureSize = 3)
+        maxLines = 4
 
-    # erode and dilate with kernel window
+    # Erode and dilate with kernel window
     kernel_erode = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
-    kernel_dilate = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    kernel_dilate = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    boneEdges = cv2.erode(edges, kernel_erode, iterations = 2)
+    boneEdges = cv2.dilate(boneEdges, kernel_dilate, iterations = 2)
 
-    boneEdges = cv2.erode(edges, kernel_erode, iterations=2)
-    boneEdges = cv2.dilate(boneEdges, kernel_dilate, iterations=2)
-
-    # plot the result
+    # Plot the result
     plt.imshow(boneEdges)
     plt.show()
 
-    # find lines with houghlines:
+    # Find lines with houghlines:
     # second arg is rho accuracy (that is 10 pixels in this case) and third is theta accuracy, fourth is the threshold
-    lines = cv2.HoughLines(boneEdges, 10, np.pi / 45, 50)
+    # which means minimum vote it should get for it to be considered as a line.
+    lines = cv2.HoughLines(boneEdges, 10, np.pi / 45, 1000)
 
+    '''
     if __debug__:
         print(lines.shape)        # (337, 1, 2)
         print(lines[0].shape)     # (1, 2)
@@ -97,105 +107,138 @@ if __name__ == '__main__':
         print(lines)        # [[  modulo, angolo in rad ]]
         print(lines[0])     # [[  3.30000000e+02   2.09439516e-01]]
         print(lines[0][0])  # [  3.30000000e+02   2.09439516e-01]
+    '''
 
-    # set the max n of lines
-    maxLines = 3
+    # Set the interval of acceptabilty
+    interval = 6
 
-    # creo due liste una con gli angoli e una con il num di angoli associati,
-    # ma e sbagliato perche questa cosa e gia stata fatta dalla hough transform
+    # Find the average between the first maxLines angles
+    peak = 0
+    count = 0
+    totangle = 0
+
+    for i in range(maxLines):
+        for rho, theta in lines[i]:
+            angle = (theta * 180) / math.pi
+            if angle > 90: #if angle is for example 175, convert it to -5 in order to compute the correct avg
+                angle -= 180
+            totangle += angle
+            count += 1
+
+    peak = totangle / count
+
+    rightInterval = peak + interval
+    leftInterval = peak - interval
+
+    print("Peak is = %f\n" % peak)
+    print("Interval is from %f to %f\n" % (leftInterval, rightInterval))
+
+    # Above threshold there are all the lines that must be taken into account
+    # first maxLines have a weight in order to distinguish them
     th_occ = {}
-    threshold = 34
+    threshold = 10
+    weight = 10
+    i = 0
 
     for line in lines:
-        for r, theta in line:
+        for rho, theta in line:
             theta_degs = int(theta * 180 / math.pi)
             if theta_degs in th_occ:
-                th_occ[theta_degs] += 1
+                if i < maxLines:
+                    th_occ[theta_degs] += weight
+                else:
+                    th_occ[theta_degs] += 1
             else:
-                th_occ[theta_degs] = 1
+                if i < maxLines:
+                    th_occ[theta_degs] = weight
+                else:
+                    th_occ[theta_degs] = 1
+        i += 1
 
-    ordered_occ = collections.OrderedDict(sorted(th_occ.items()))
-    maximums = find_maximums(ordered_occ, threshold)
+
+    ordered_occ = collections.OrderedDict(sorted(th_occ.items())) #order the tuples from 0° to 180°
+
+    maximums = find_maximums(ordered_occ, threshold)  #find local maximum
+
+    '''
+    ITEMS(): 
+    
+    dict = {'Name': 'Zara', 'Age': 7}
+    print "Value : %s" % dict.items()
+    When we run above program it produces following result:
+    Value: [('Age', 7), ('Name', 'Zara')]
+    
+    ORDEREDDICT():
+    
+    Ordered dictionaries are just like regular dictionaries but they remember the order that items were inserted.
+    When iterating over an ordered dictionary, the items are returned in the order their keys were first added.
+    '''
+
+    # Here we define the limit of the interval in the range 0° - 180°, just to draw them correctly
+
+    if rightInterval > 180:
+        rightInterval -= 180
+    if rightInterval < 0:
+        rightInterval += 180
+
+    if leftInterval > 180:
+        leftInterval -= 180
+    if leftInterval < 0:
+        leftInterval += 180
+
+    if peak < 0:
+        peak += 180
+    if peak > 180:
+        peak -= 180
 
     plt.scatter(maximums.keys(), maximums.values(), marker='x', color='r')
     plt.plot(ordered_occ.keys(), ordered_occ.values())
-    plt.plot((0, 180), (threshold, threshold), linestyle='--')
+    plt.plot((0, 180), (threshold, threshold), linestyle = '--')
+    plt.axvline(x = peak, color = 'b')
+    plt.axvline(x = rightInterval, color = 'r', linestyle = ':')
+    plt.axvline(x = leftInterval, color = 'r', linestyle = ':')
     plt.xlabel("Theta")
     plt.ylabel("Weight")
     plt.show()
 
-    # peak array
-    peaks = 0
     broken = False
     end = False
 
-    # save the two lines with different angles in format lines[x1, y1][x2, y2]
-    w = 2
-    line_first = [[0 for x in range(w)] for y in range(w)]
-    line_second = [[0 for x in range(w)] for y in range(w)]
+    # Back to the negative value
+    if peak > 90:
+        peak -= 180
 
-    # faccio una media tra le linee iniziali
-    count = 0
-    totangle = 0
-    for line in lines:
-        for rho, theta in line:
-            angle = (theta * 180) / math.pi
-            totangle += angle
-            count += 1
-
-    peaks = totangle / count
-
-    print("peaks is = %f\n" % peaks)
-
-    # draw the first maxLines
-    for line in lines:
-        for rho, theta in line:
+    # Draw the first maxLines
+    for i in range(maxLines):
+        for rho, theta in lines[i]:
             a = np.cos(theta)
             b = np.sin(theta)
             x0 = a * rho
             y0 = b * rho
 
-            # height e la lunghezza della linea
+            # height id the lines len
             x1 = int(x0 + height * (-b))
             y1 = int(y0 + height * a)
             x2 = int(x0 - height * (-b))
             y2 = int(y0 - height * a)
 
-            # converto in gradi
+            # convert in degree
             angle = (theta * 180) / math.pi
 
-            # 0 e 179 hanno una differenze di 1 grado, ma viene letta come 179 se non faccio questa operazione
+            # ex: set 175° to -5°
             if angle > 90:
-                angle = angle - 180
+                angle -= 180
 
-            # print("Line %s\n" % line)
-            print("Theta: %f\n" % angle)
-            print("Rho: %f\n" % rho)
+            print("Lines %d: Theta %f and Rho %f\n" % (i + 1, angle, rho))
+
             cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 3)
 
-            a, b = find_coeffs((x1, y1), (x2, y2))
-            cv2.circle(img, (int(-b / a), 0), 50, (0, 255, 255), thickness=-1)  # -1 thickness is for
-            cv2.circle(img, (int((height-b)/a), int(height)), 50, (0, 255, 0), thickness=-1)
+            a, b = find_coeffs(x1, y1, x2, y2)
+            cv2.circle(img, (int(-b / a), 0), 50, (0, 255, 255), thickness = -1)  # -1 thickness is for
+            cv2.circle(img, (int((height - b)/a), int(height)), 50, (0, 255, 0), thickness = -1)
 
-            # uso il primo angolo come riferimento, qua forse andrebbe meglio prendere una media tra i vari theta
-            # if i == 0:
-            #   peaks = angle
-            #   line_first[0][0] = x1
-            #   line_first[0][1] = y1
-            #   line_first[1][0] = x2
-            #   line_first[1][1] = y2
-
-            # else:
-            # for j in range(i):
-            if abs(angle - peaks) > 5:
-                # qua ci farebbe fare un confronto proporzionato con maxlines, piu linee analizzate piu ampia la soglia
-                # line_second[0][0] = x1
-                # line_second[0][1] = y1
-                # line_second[1][0] = x2
-                # line_second[1][1] = y2
-
+            if abs(angle - peak) > interval:
                 broken = True
-                # end = True
                 break
         if end:
             break
