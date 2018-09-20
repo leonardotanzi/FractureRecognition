@@ -43,17 +43,20 @@ def find_maximums(points, thresh):
 
 
 if __name__ == '__main__':
-    leo = True
-    clean_img = True
 
-    if leo:
-        broken = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Broken/ok4.jpg'
-        clean = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Unbroken/ok4.jpg'
-        out = '/Users/leonardotanzi/Desktop/houghlines2.jpg'
-    else:
-        broken = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Broken\bone3cut.jpg"
-        clean = r"C:\Users\cassa\Desktop\Fabien\Fabien\Jpeg Notevoli\Unbroken\sana2.jpg"
-        out = r"C:\Users\cassa\Desktop\Fabien\out_img.jpg"
+
+    #PARAMETER SETTING
+    clean_img = False
+    usingAvg = True
+    maxLines = 4
+    interval = 5
+    gaussianWindow = 5
+    cannyWindow = 24
+    
+
+    broken = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Broken/ok9.jpg'
+    clean = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Unbroken/ok5.jpg'
+    out = '/Users/leonardotanzi/Desktop/houghlines2.jpg'
 
     # We need to open the img twice, this is to retrieve the img dimensions
     if clean_img:
@@ -73,15 +76,10 @@ if __name__ == '__main__':
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Blur to remove noise
-    blur = cv2.GaussianBlur(gray, (3, 3), 0)
+    blur = cv2.GaussianBlur(gray, (gaussianWindow, gaussianWindow), 0)
 
     # Find edges first is for clean image, second for unbroken, maxLines parameter must be adapted
-    if clean_img:
-        edges = cv2.Canny(blur, 24, 72, apertureSize = 3)
-        maxLines = 3
-    else:
-        edges = cv2.Canny(blur, 24, 72, apertureSize = 3)
-        maxLines = 4
+    edges = cv2.Canny(blur, cannyWindow, cannyWindow * 3, apertureSize = 3)
 
     # Erode and dilate with kernel window
     kernel_erode = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
@@ -109,13 +107,12 @@ if __name__ == '__main__':
         print(lines[0][0])  # [  3.30000000e+02   2.09439516e-01]
     '''
 
-    # Set the interval of acceptabilty
-    interval = 6
 
     # Find the average between the first maxLines angles
     peak = 0
     count = 0
     totangle = 0
+
 
     for i in range(maxLines):
         for rho, theta in lines[i]:
@@ -204,6 +201,10 @@ if __name__ == '__main__':
     broken = False
     end = False
 
+    if usingAvg == False:
+        for rho, theta in lines[0]:
+            peak = (theta * 180) / math.pi
+
     # Back to the negative value
     if peak > 90:
         peak -= 180
@@ -234,8 +235,8 @@ if __name__ == '__main__':
             cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 3)
 
             a, b = find_coeffs(x1, y1, x2, y2)
-            cv2.circle(img, (int(-b / a), 0), 50, (0, 255, 255), thickness = -1)  # -1 thickness is for
-            cv2.circle(img, (int((height - b)/a), int(height)), 50, (0, 255, 0), thickness = -1)
+            cv2.circle(img, (int(-b / a), 0), 20, (0, 255, 255), thickness = -1)  # -1 thickness is for
+            cv2.circle(img, (int((height - b)/a), int(height)), 20, (0, 255, 0), thickness = -1)
 
             if abs(angle - peak) > interval:
                 broken = True
