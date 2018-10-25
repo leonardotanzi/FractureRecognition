@@ -4,6 +4,19 @@ import math
 import matplotlib.pyplot as plt
 import collections
 from PIL import Image
+import kivy
+from kivy.app import App
+from kivy.uix.label import Label
+
+
+#KIVY
+
+
+class MyPaintApp(App):
+    def build(self):
+        return Label(text = 'Hello world')
+
+MyPaintApp().run()
 
 
 def find_coeffs(x1, y1, x2, y2):
@@ -58,11 +71,7 @@ if __name__ == '__main__':
 
     broken = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Broken/ok9.jpg'
     clean = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Unbroken/ok5.jpg'
-    outLines = '/Users/leonardotanzi/Desktop/FractureRecognition/OutputFracture/houghLines.jpg'
-    outCanny = '/Users/leonardotanzi/Desktop/FractureRecognition/OutputFracture/canny.jpg'
-    outGraph = '/Users/leonardotanzi/Desktop/FractureRecognition/OutputFracture/graph.jpg'
-
-
+    out = '/Users/leonardotanzi/Desktop/houghlines2.jpg'
 
     # We need to open the img twice, this is to retrieve the img dimensions
     if clean_img:
@@ -94,9 +103,8 @@ if __name__ == '__main__':
     boneEdges = cv2.dilate(boneEdges, kernel_dilate, iterations = 2)
 
     # Plot the result
-    #plt.imshow(boneEdges)
-    #plt.show()
-
+    plt.imshow(boneEdges)
+    plt.show()
 
     # Find lines with houghlines:
     # second arg is rho accuracy (that is 10 pixels in this case) and third is theta accuracy, fourth is the threshold
@@ -203,8 +211,7 @@ if __name__ == '__main__':
     plt.axvline(x = leftInterval, color = 'r', linestyle = ':')
     plt.xlabel("Theta")
     plt.ylabel("Weight")
-    #plt.show()
-    plt.savefig(outGraph)
+    plt.show()
 
     broken = False
     end = False
@@ -257,5 +264,4 @@ if __name__ == '__main__':
     else:
         print("Unbroken!\n")
 
-    cv2.imwrite(outLines, img)
-    cv2.imwrite(outCanny, boneEdges)
+    cv2.imwrite(out, img)
