@@ -6,6 +6,16 @@ import collections
 from PIL import Image
 
 
+def make_square(im, min_size=256, fill_color=(0, 0, 0, 0)):
+    
+    x, y = im.size
+    print(x)
+    print(y)
+    size = max(min_size, x, y)
+    new_im = Image.new('RGBA', (size, size), fill_color)
+    new_im.paste(im, ((size - x) / 2, (size - y) / 2))
+    return new_im
+
 def find_coeffs(x1, y1, x2, y2):
 
     # Just to avoid division by zero error
@@ -56,12 +66,11 @@ if __name__ == '__main__':
     cannyWindow = 24
     
 
-    broken = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Broken/ok9.jpg'
-    clean = '/Users/leonardotanzi/Desktop/Fratture Computer Vision/Jpeg Notevoli/Unbroken/ok5.jpg'
+    broken = '/Users/leonardotanzi/Desktop/FractureRecognition/Images/Broken/ok9.jpg'
+    clean = '/Users/leonardotanzi/Desktop/FractureRecognition/Images/Unbroken/ok5.jpg'
     outLines = '/Users/leonardotanzi/Desktop/FractureRecognition/OutputFracture/houghLines.jpg'
     outCanny = '/Users/leonardotanzi/Desktop/FractureRecognition/OutputFracture/canny.jpg'
     outGraph = '/Users/leonardotanzi/Desktop/FractureRecognition/OutputFracture/graph.jpg'
-
 
 
     # We need to open the img twice, this is to retrieve the img dimensions
@@ -92,10 +101,6 @@ if __name__ == '__main__':
     kernel_dilate = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
     boneEdges = cv2.erode(edges, kernel_erode, iterations = 2)
     boneEdges = cv2.dilate(boneEdges, kernel_dilate, iterations = 2)
-
-    # Plot the result
-    #plt.imshow(boneEdges)
-    #plt.show()
 
 
     # Find lines with houghlines:
@@ -203,7 +208,6 @@ if __name__ == '__main__':
     plt.axvline(x = leftInterval, color = 'r', linestyle = ':')
     plt.xlabel("Theta")
     plt.ylabel("Weight")
-    #plt.show()
     plt.savefig(outGraph)
 
     broken = False
@@ -259,3 +263,6 @@ if __name__ == '__main__':
 
     cv2.imwrite(outLines, img)
     cv2.imwrite(outCanny, boneEdges)
+
+    #new_image = make_square(img)
+    #new_image.show()
